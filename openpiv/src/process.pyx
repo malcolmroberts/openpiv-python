@@ -444,7 +444,7 @@ def get_field_shape ( image_size, window_size, overlap ):
     return ( (image_size[0] - window_size)//(window_size-overlap)+1, 
              (image_size[1] - window_size)//(window_size-overlap)+1 )
 
-def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nffty = None ):
+def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None, nffty = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -479,12 +479,66 @@ def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nf
     """
     
     if corr_method == 'fft':
+        print "fft!"
         if nfftx is None:
             nfftx = 2*window_a.shape[0]
         if nffty is None:
             nffty = 2*window_a.shape[1]
         return fftshift(irfft2(rfft2(normalize_intensity(window_a),s=(nfftx,nffty))*np.conj(rfft2(normalize_intensity(window_b),s=(nfftx,nffty)))).real, axes=(0,1)  )
+    elif corr_method == 'fftwpp':
+        import fftwpp
+        print "fftwpp!"
+        fftwpp.fftwpp_set_maxthreads(1)
+        f = fftwpp.complex_align(window_a.shape)
+        g = fftwpp.complex_align(window_a.shape)
+        conv = fftwpp.Convolution(f.shape)
+        nx = window_a.shape[0]
+        ny = window_a.shape[1]
+        #print normalize_intensity(window_b)
+        #print "window_a.shape: ", window_a.shape
+        #print "window_b.shape: ", window_b.shape
+        wa = normalize_intensity(window_a)
+        wb = normalize_intensity(window_b[::-1,::-1]) # FIXME: what does this mean?
+        #print "wb.shape: ", wb.shape
+
+        i = 0
+        while i < wa.shape[0]:
+            #print "i: ", i
+            j = 0
+            while j < wa.shape[0]:
+                #print "\tj: ", j
+                f[i][j] = np.complex(wa[i][j], 0)
+                g[i][j] = np.complex(0, 0)
+                j += 1
+            i += 1
+
+        i = 0
+        while i < wb.shape[0]:
+            #print "i: ", i
+            j = 0
+            while j < wb.shape[0] - 1:
+                #print "\tj: ", j
+                g[i][j] = np.complex(wb[i][j], 0)
+                j += 1
+            i += 1
+
+        conv.convolve(f, g)
+        #conv.correlate(f, g)
+
+        fgconv = np.empty(window_a.shape)
+        i = 0
+        while i < window_a.shape[0]:
+            #print "i: ", i
+            j = 0
+            while j < window_a.shape[1]:
+                fgconv[i][j] = f[i][j].real
+                j += 1
+            i += 1
+        return fgconv
+
+        #return convolve(normalize_intensity(window_a), normalize_intensity(window_b[::-1,::-1]), 'full') # FIXME: temp
     elif corr_method == 'direct':
+        print "direct!"
         return convolve(normalize_intensity(window_a), normalize_intensity(window_b[::-1,::-1]), 'full')
     else:
         raise ValueError('method is not implemented')
