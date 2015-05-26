@@ -444,7 +444,15 @@ def get_field_shape ( image_size, window_size, overlap ):
     return ( (image_size[0] - window_size)//(window_size-overlap)+1, 
              (image_size[1] - window_size)//(window_size-overlap)+1 )
 
-def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None, nffty = None ):
+
+import fftwpp
+fftwpp.fftwpp_set_maxthreads(1)
+conv = fftwpp.Convolution([64, 64])
+f = fftwpp.complex_align([64, 64])
+g = fftwpp.complex_align([64, 64])
+
+
+def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nffty = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -487,11 +495,12 @@ def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None,
         return fftshift(irfft2(rfft2(normalize_intensity(window_a),s=(nfftx,nffty))*np.conj(rfft2(normalize_intensity(window_b),s=(nfftx,nffty)))).real, axes=(0,1)  )
     elif corr_method == 'fftwpp':
         import fftwpp
+        #print asdfasdf
         print "fftwpp!"
-        fftwpp.fftwpp_set_maxthreads(1)
-        f = fftwpp.complex_align(window_a.shape)
-        g = fftwpp.complex_align(window_a.shape)
-        conv = fftwpp.Convolution(f.shape)
+        #fftwpp.fftwpp_set_maxthreads(1)
+        #f = fftwpp.complex_align(window_a.shape)
+        #g = fftwpp.complex_align(window_a.shape)
+        #conv = fftwpp.Convolution(f.shape)
         nx = window_a.shape[0]
         ny = window_a.shape[1]
         #print normalize_intensity(window_b)
