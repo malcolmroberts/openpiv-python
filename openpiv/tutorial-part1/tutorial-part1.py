@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/alex/Documents/OpenPIV/openpiv-python')
+#sys.path.append('/Users/alex/Documents/OpenPIV/openpiv-python')
 
 import openpiv.tools
 import openpiv.process
