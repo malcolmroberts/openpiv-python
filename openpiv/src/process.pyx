@@ -451,8 +451,7 @@ conv = fftwpp.Convolution([64, 64])
 f = fftwpp.complex_align([64, 64])
 g = fftwpp.complex_align([64, 64])
 
-
-def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nffty = None ):
+def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None, nffty = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -495,57 +494,20 @@ def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nf
         return fftshift(irfft2(rfft2(normalize_intensity(window_a),s=(nfftx,nffty))*np.conj(rfft2(normalize_intensity(window_b),s=(nfftx,nffty)))).real, axes=(0,1)  )
     elif corr_method == 'fftwpp':
         import fftwpp
-        #print asdfasdf
         print "fftwpp!"
-        #fftwpp.fftwpp_set_maxthreads(1)
-        #f = fftwpp.complex_align(window_a.shape)
-        #g = fftwpp.complex_align(window_a.shape)
-        #conv = fftwpp.Convolution(f.shape)
-        nx = window_a.shape[0]
-        ny = window_a.shape[1]
-        #print normalize_intensity(window_b)
-        #print "window_a.shape: ", window_a.shape
-        #print "window_b.shape: ", window_b.shape
-        wa = normalize_intensity(window_a)
-        wb = normalize_intensity(window_b[::-1,::-1]) # FIXME: what does this mean?
-        #print "wb.shape: ", wb.shape
 
-        i = 0
-        while i < wa.shape[0]:
-            #print "i: ", i
-            j = 0
-            while j < wa.shape[0]:
-                #print "\tj: ", j
-                f[i][j] = np.complex(wa[i][j], 0)
-                g[i][j] = np.complex(0, 0)
-                j += 1
-            i += 1
+        global f
+        f = np.zeros((64, 64), dtype = np.complex128)
+        f.real = normalize_intensity(window_a)
 
-        i = 0
-        while i < wb.shape[0]:
-            #print "i: ", i
-            j = 0
-            while j < wb.shape[0] - 1:
-                #print "\tj: ", j
-                g[i][j] = np.complex(wb[i][j], 0)
-                j += 1
-            i += 1
+        global g
+        g = np.zeros((64, 64), dtype = np.complex128)
+        g[0:24,0:24].real = normalize_intensity(window_b[::-1,::-1])
 
         conv.convolve(f, g)
-        #conv.correlate(f, g)
 
-        fgconv = np.empty(window_a.shape)
-        i = 0
-        while i < window_a.shape[0]:
-            #print "i: ", i
-            j = 0
-            while j < window_a.shape[1]:
-                fgconv[i][j] = f[i][j].real
-                j += 1
-            i += 1
-        return fgconv
+        return f.real
 
-        #return convolve(normalize_intensity(window_a), normalize_intensity(window_b[::-1,::-1]), 'full') # FIXME: temp
     elif corr_method == 'direct':
         print "direct!"
         return convolve(normalize_intensity(window_a), normalize_intensity(window_b[::-1,::-1]), 'full')
