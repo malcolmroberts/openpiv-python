@@ -446,12 +446,15 @@ def get_field_shape ( image_size, window_size, overlap ):
 
 
 import fftwpp
-fftwpp.fftwpp_set_maxthreads(1)
-conv = fftwpp.Convolution([64, 64])
-f = fftwpp.complex_align([64, 64])
-g = fftwpp.complex_align([64, 64])
+fftwpp.fftwpp_set_maxthreads(4)
+convnx = 64
+convny = 64
+conv = fftwpp.Convolution([convnx, convny])
 
-def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None, nffty = None ):
+#f = fftwpp.complex_align([64, 64])
+#g = fftwpp.complex_align([64, 64])
+
+def correlate_windows( window_a, window_b, corr_method = 'fft', nfftx = None, nffty = None ):
     """Compute correlation function between two interrogation windows.
     
     The correlation function can be computed by using the correlation 
@@ -484,6 +487,7 @@ def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None,
         a two dimensions array for the correlation function.
     
     """
+
     
     if corr_method == 'fft':
         print "fft!"
@@ -495,15 +499,27 @@ def correlate_windows( window_a, window_b, corr_method = 'fftwpp', nfftx = None,
     elif corr_method == 'fftwpp':
         import fftwpp
         print "fftwpp!"
+        if nfftx is None:
+            nfftx = window_a.shape[0]
+        if nffty is None:
+            nffty = window_a.shape[1]
 
-        global f
-        f = np.zeros((64, 64), dtype = np.complex128)
+        f = fftwpp.complex_align([nfftx, nffty])
+        f = np.zeros((nfftx, nffty), dtype = np.complex128)
         f.real = normalize_intensity(window_a)
 
-        global g
-        g = np.zeros((64, 64), dtype = np.complex128)
-        g[0:24,0:24].real = normalize_intensity(window_b[::-1,::-1])
+        g = fftwpp.complex_align([nfftx, nfftx])
+        g = np.zeros((nfftx, nffty), dtype = np.complex128)
+        g[0:window_b.shape[0], 0:window_b.shape[1]].real = normalize_intensity(window_b[::-1,::-1])
 
+        #conv = fftwpp.Convolution([nfftx, nffty])
+        global conv
+        global convnx
+        global convny
+        if not (convnx == nfftx and convny == nffty):
+            convnx = nfftx
+            convny = nffty
+            conv = fftwpp.Convolution([convnx, convny])
         conv.convolve(f, g)
 
         return f.real
